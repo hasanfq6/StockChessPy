@@ -6,14 +6,42 @@ StockChessPy is a simple chess assistant powered by [Stockfish](https://stockfis
 [GitHub - Kamanati/StockChessPy](https://github.com/Kamanati/StockChessPy)
 
 ---
+# Features 
 
-## 🚀 Features
-- **Stockfish Engine Integration** – Provides best move recommendations.
-- **Customizable Play Style** – Adjusts difficulty, strength, and analysis depth.
-- **Algebraic Notation Input** – Enter moves in standard chess notation.
-- **Board Visualization** – View the current board state at any time.
-- **Checkmate Alerts** – Notifies when a forced checkmate is available.
-- **Optimized for Termux** – Runs smoothly on mobile devices.
+- **Multiple Playstyles:**
+  - 🎮 Aggressive Mode: Maximum strength and attacking gameplay.
+  - 🎮 Intermediate Mode: Balanced strength with human-like moves.
+  - 🎮 Club Mode: Plays at a casual club-player level.
+  - 🎮 Classical Mode: Deep calculation for strategic play.
+  - 🎮 Defensive Mode: Avoids blunders and prioritizes safety.
+  - 🎮 Gambit Mode: Sacrifices material for aggressive attacks.
+  - 🎮 Adaptive Mode: Dynamically adjusts strategy based on game state.
+
+- **Customizable Engine Settings:**
+  - 🧠 Skill Level: Adjustable from 0-20.
+  - 🎖️ Elo Rating: Configurable between 1390 - 3190.
+  - 🖥️ CPU Threads: Defines parallel processing power.
+  - 💾 Hash Size: Customizable memory allocation for efficiency.
+  - ⏳ Move Overhead: Controls response time precision.
+  - 🔍 Nodes per Move: Ensures deeper calculation for best move selection.
+  - 📚 Syzygy Depth: Enhances endgame knowledge using tablebases.
+
+- **Adaptive Mode Intelligence:**
+  - 🟢 Plays aggressively when winning.
+  - 🔴 Switches to defensive when losing.
+  - 🟡 Uses classical play for balanced positions.
+
+- **Interactive Chess Assistant:**
+  - 🔥 Suggests the best opening move when playing as White.
+  - ♟️ Accepts opponent moves in algebraic notation.
+  - 📊 Provides real-time board evaluation and move suggestions.
+  - ⚠️ Alerts when checkmate is imminent.
+
+- **User-Friendly Experience:**
+  - 🎨 Displays an attractive configuration summary.
+  - 📌 Allows board visualization on demand.
+  - 🚪 Supports quitting the game at any time.
+
 
 ---
 
