@@ -1,0 +1,90 @@
+.TH STOCKCHESS 1 "February 2025" "Stockfish Chess Assistant" "User Commands"
+.SH NAME
+StockChess \- A custom Stockfish-based chess engine with predefined playstyles and adaptive strategy.
+.SH SYNOPSIS
+.B stockchess
+[IOPTIONSR]
+.SH DESCRIPTION
+StockChess is a chess assistant that leverages the Stockfish engine to analyze and suggest the best moves.
+It supports multiple predefined playstyles, configurable engine settings, and an interactive game mode.
+.SH OPTIONS
+.SS Modes (Predefined Playstyles)
+.TP
+.B \-A, \-\-aggressive
+Enable maximum strength mode (Default Mode).
+.TP
+.B \-I, \-\-intermediate
+Enable moderate strength mode.
+.TP
+.B \-C, \-\-club
+Enable normal player mode (Human-like play).
+.TP
+.B \-K, \-\-classical
+Enable deep calculation mode (Slow & Strategic).
+.TP
+.B \-D, \-\-defensive
+Enable defensive playstyle (Avoids blunders).
+.TP
+.B \-G, \-\-gambit
+Enable aggressive and risky plays (Sacrifices material).
+.TP
+.B \-X, \-\-adaptive
+Enable dynamic playstyle (Adjusts strategy during the game).
+
+.SS Custom Configuration
+.TP
+.B \-s, \-\-skill INUMR
+Set Stockfish skill level (0-20).
+.TP
+.B \-e, \-\-elo INUMR
+Set Stockfish UCI Elo rating (1390 - 3190).
+.TP
+.B \-t, \-\-threads INUMR
+Set number of CPU threads for Stockfish (Higher = Faster).
+.TP
+.B \-m, \-\-hash INUMR
+Set hash table size in MB (Higher = Lower chance of crash).
+.TP
+.B \-o, \-\-move-overhead INUMR
+Set move overhead in milliseconds (Higher = More time for move).
+.TP
+.B \-n, \-\-nodestime INUMR
+Set minimum nodes per move (Higher = Best move).
+.TP
+.B \-z, \-\-syzygy-depth INUMR
+Set Syzygy tablebase probe depth (Endgame table).
+
+.SH INTERACTIVE MODE
+After starting the program, the user is prompted to input opponent moves in algebraic notation (e.g., e4, Nc6). 
+StockChess then analyzes the board and suggests the best moves.
+.TP
+\- The game continues until checkmate, resignation, or manual exit.
+\- The board can be viewed at any time using the "board" command.
+
+.SH EXAMPLES
+.B stockchess \-A
+.RS
+Starts the chess assistant in Aggressive mode.
+.RE
+.B stockchess \-C \-t 4
+.RS
+Starts the chess assistant in Club mode with 4 CPU threads.
+.RE
+.B stockchess \-X
+.RS
+Starts the chess assistant in Adaptive mode, adjusting strategy dynamically.
+.RE
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Stockfish engine not found or an error occurred.
+
+.SH SEE ALSO
+.BR stockfish(1)
+
+.SH AUTHOR
+Hasan
