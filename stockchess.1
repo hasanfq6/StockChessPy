@@ -54,6 +54,22 @@ Set minimum nodes per move (Higher = Best move).
 .B \-z, \-\-syzygy-depth INUMR
 Set Syzygy tablebase probe depth (Endgame table).
 
+.SS Others
+.TP
+.B \-B, \-\-blunder ^LIFLOAT^LR
+Set Blunder to true and at 10% of blunder. To change this, follow the scale below:
+
+0.01 = 1%,
+0.02 = 2%,
+...
+0.09 = 9%,
+...
+0.1 = 10%,
+0.2 = 20%,
+...
+0.9 = 90%,
+
+
 .SH INTERACTIVE MODE
 After starting the program, the user is prompted to input opponent moves in algebraic notation (e.g., e4, Nc6). 
 StockChess then analyzes the board and suggests the best moves.
@@ -62,18 +78,21 @@ StockChess then analyzes the board and suggests the best moves.
 \- The board can be viewed at any time using the "board" command.
 
 .SH EXAMPLES
-.B stockchess \-A
+.B python main.py \-A
 .RS
 Starts the chess assistant in Aggressive mode.
 .RE
-.B stockchess \-C \-t 4
+.B python main.py \-C \-t 4
 .RS
 Starts the chess assistant in Club mode with 4 CPU threads.
 .RE
-.B stockchess \-X
+.B python main.py \-X
 .RS
 Starts the chess assistant in Adaptive mode, adjusting strategy dynamically.
 .RE
+.B python main.py \-G \-B
+.RS
+Starts the chess assistant in Gambit mode with Blunder
 
 .SH EXIT STATUS
 .TP

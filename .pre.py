@@ -22,9 +22,9 @@ engine.configure({
     "UCI_LimitStrength": False,  # Use full engine strength
     "Threads": 3,            # Use 4 CPU cores
     "Hash": 512,             # Allocate memory for deeper analysis
-    "Move Overhead": 30,     # Less time wasted, more aggressive
+    "Move Overhead": 2000,     # Less time wasted, more aggressive
     "nodestime": 10000,        # Forces more nodes per move (deeper calc)
-    "SyzygyProbeDepth": 10,   # Use tablebases only at deep endgames
+    "SyzygyProbeDepth": 50,   # Use tablebases only at deep endgames
     "UCI_ShowWDL": True      # Show win/draw/loss probabilities
 })
 

@@ -1,22 +1,19 @@
-import os
+import os,sys,random
 import argparse
 import chess
 import chess.engine
+import readline 
 
-# Stockfish path for Termux
 engine_path = "/data/data/com.termux/files/usr/bin/stockfish"
 
-# Check if Stockfish is installed
 if not os.path.exists(engine_path):
     print("❌ Stockfish engine not found. Install it. Refer https://github.com/Kamanati/StockChessPy")
     exit(1)
 
-# Argument Parser
 import argparse
 
 parser = argparse.ArgumentParser(description="Stockfish Chess Engine with Custom Modes")
 
-# Modes Group
 modes_group = parser.add_argument_group("Modes", "Predefined playstyles")
 modes_group.add_argument("-A", "--aggressive", action="store_true", help="Enable maximum strength mode (Default Mode)")
 modes_group.add_argument("-I", "--intermediate", action="store_true", help="Enable moderate strength mode")
@@ -26,7 +23,6 @@ modes_group.add_argument("-D", "--defensive", action="store_true", help="Enable 
 modes_group.add_argument("-G", "--gambit", action="store_true", help="Enable aggressive and risky plays (Sacrifices material)")
 modes_group.add_argument("-X", "--adaptive", action="store_true", help="Enable dynamic playstyle (Adjusts strategy during the game)")
 
-# Custom Configuration Group
 custom_group = parser.add_argument_group("Custom", "Fine-tune engine settings")
 custom_group.add_argument("-s", "--skill", type=int, default=20, help="Stockfish skill level (0-20)")
 custom_group.add_argument("-e", "--elo", type=int, default=3190, help="Stockfish UCI Elo rating (1390 - 3190)")
@@ -36,12 +32,13 @@ custom_group.add_argument("-o", "--move-overhead", type=int, default=30, help="M
 custom_group.add_argument("-n", "--nodestime", type=int, default=10000, help="Minimum nodes per move (Higher = Best move)")
 custom_group.add_argument("-z", "--syzygy-depth", type=int, default=10, help="Syzygy tablebase probe depth (Endgame table)")
 
-# Parse arguments
+other_group = parser.add_argument_group("Others", "Others options")
+other_group.add_argument("-B", "--blunder", type=float,default=0.1, help="Make Blunder moves to avoid detection (default: false and 10 percentage(0.1 = 10,0.2 = 20))")
+
 args = parser.parse_args()
 
 slected_mode = None
 
-# Apply predefined configurations based on mode
 if args.aggressive:
     args.skill = 20
     args.elo = 3190
@@ -126,6 +123,8 @@ engine.configure({
 print("\n🔧 Stockfish Configuration 🔧")
 if slected_mode is not None:
       print(f"🎮 Mode        : {slected_mode} ")
+elif len(sys.argv) == 1:
+     print(f"🎮 Mode        : Aggresive (Default)")
 else:
       print(f"🎮 Mode        : Custom ")
 print(f"🧠 Skill Level     : {args.skill}")
@@ -136,6 +135,21 @@ print(f"⏳ Move Overhead   : {args.move_overhead} ms")
 print(f"🔍 Nodes per Move  : {args.nodestime}")
 print(f"📚 Syzygy Depth    : {args.syzygy_depth}\n")
 
+if len(sys.argv) == 1:
+     print("StockChessPy starts as Aggresive for costomize use `python main.py -h`\n")
+
+def get_legal_moves():
+    """Get all legal moves in algebraic notation."""
+    return [board.san(move) for move in board.legal_moves]
+
+def completer(text, state):
+    """Suggest legal moves dynamically while typing."""
+    options = [move for move in get_legal_moves() if move.startswith(text)]
+    return options[state] if state < len(options) else None
+
+readline.parse_and_bind("tab: complete")
+readline.set_completer(completer)
+
 # Ask for opponent's color
 while True:
     opponent_color = input("Is your opponent playing as White or Black? (w/b): ").strip().lower()
@@ -145,7 +159,7 @@ while True:
 
 # If opponent is Black, suggest the best opening move
 if opponent_color == 'b':
-    best_move = engine.play(board, chess.engine.Limit(time=2))
+    best_move = engine.play(board, chess.engine.Limit(depth=20,time=2))
     best_move_algebraic = board.san(best_move.move)
     print(f"\n🔥 Suggested first move: {best_move_algebraic} 🔥")
     board.push(best_move.move)
@@ -153,7 +167,13 @@ if opponent_color == 'b':
 print("\nChess Assistant Started. Enter opponent's moves in algebraic notation (e.g., e4, Nc6)")
 
 while not board.is_game_over():
-    move = input("\nEnter opponent's move (or 'board' to view board, 'quit' to exit): ").strip()
+
+    try:
+      move = input("Enter Opponent's Move: ")
+
+    except KeyboardInterrupt:
+        print("\nGame aborted.")
+        break
 
     if move.lower() == "quit":
         break
@@ -197,11 +217,38 @@ while not board.is_game_over():
     if mate_in is not None:
         print(f"\n⚠️ CHECKMATE IN {mate_in} MOVES! ⚠️")
 
-    # Get best move
-    best_move = engine.play(board, chess.engine.Limit(time=3))
+    if args.blunder and mate_in is None and random.random() < args.blunder:
+
+        analysis = engine.analyse(board, chess.engine.Limit(time=1), info=chess.engine.INFO_SCORE)
+        best_move = engine.play(board, chess.engine.Limit(time=1)).move
+        best_eval = analysis["score"].relative.score(mate_score=10000)  
+
+    # Try all legal moves and pick the worst one
+        worst_move = None
+        worst_eval = best_eval  
+
+        for move in board.legal_moves:
+            board.push(move)
+            analysis = engine.analyse(board, chess.engine.Limit(time=0.5), info=chess.engine.INFO_SCORE)
+            move_eval = analysis["score"].relative.score(mate_score=10000)  
+            board.pop()  
+
+            if move_eval is not None and move_eval < worst_eval:  
+                worst_eval = move_eval
+                worst_move = move  
+
+        if worst_move:
+            worst_move_algebraic = board.san(worst_move)
+            print(f"\n🤡 Blundering move: {worst_move_algebraic} (-{abs(best_eval - worst_eval)} cp)\n")
+            board.push(worst_move)
+        continue
+
+    best_move = engine.play(board, chess.engine.Limit(depth=10,time=3))
     best_move_algebraic = board.san(best_move.move)
-    print(f"\n✅ Best move for you: {best_move_algebraic}")
+    print(f"\n✅ Best move for you: {best_move_algebraic}\n")
     board.push(best_move.move)
 
+
+
 print("\n🏁 Game Over!")
-engine.quit() 
+engine.quit()
