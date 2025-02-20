@@ -33,7 +33,7 @@ custom_group.add_argument("-n", "--nodestime", type=int, default=10000, help="Mi
 custom_group.add_argument("-z", "--syzygy-depth", type=int, default=10, help="Syzygy tablebase probe depth (Endgame table)")
 
 other_group = parser.add_argument_group("Others", "Others options")
-other_group.add_argument("-B", "--blunder", type=float,default=0.1, help="Make Blunder moves to avoid detection (default: false and 10 percentage(0.1 = 10,0.2 = 20))")
+other_group.add_argument("-B", "--blunder",action="store_true", help="Make Blunder moves to avoid detection (default: false and 10 percentage")
 
 args = parser.parse_args()
 
@@ -166,6 +166,10 @@ if opponent_color == 'b':
 
 print("\nChess Assistant Started. Enter opponent's moves in algebraic notation (e.g., e4, Nc6)")
 
+stockfish_move = None  # Store Stockfish’s last move
+stockfish_move_uci = None  # Store UCI format for easy undo
+
+
 while not board.is_game_over():
 
     try:
@@ -180,6 +184,26 @@ while not board.is_game_over():
     elif move.lower() == "board":
         print(board)
         continue
+    elif move.lower() == "oops":  # Fix accidental moves
+        if stockfish_move is None:
+            print("⚠️ No suggested move to verify yet.")
+            continue
+
+        print(f"🔄 You accidentally moved instead of {stockfish_move}. Let's fix it.")
+        user_actual_move = input("Enter the move you actually played: ").strip()
+
+        # Undo Stockfish’s move
+        board.pop()
+
+        try:
+            # Apply the move the user actually played
+            board.push_san(user_actual_move)
+            print(f"\n✅ Board updated: Your move {user_actual_move} is now applied.\n")
+        except ValueError:
+            print("❌ Invalid move entered. Keeping Stockfish's move.")
+            board.push_uci(stockfish_move_uci)  # Restore Stockfish's move if the user input is invalid
+
+        continue  # Move on without re-suggesting
 
     try:
         board.push_san(move)
@@ -240,14 +264,20 @@ while not board.is_game_over():
         if worst_move:
             worst_move_algebraic = board.san(worst_move)
             print(f"\n🤡 Blundering move: {worst_move_algebraic} (-{abs(best_eval - worst_eval)} cp)\n")
+            stockfish_move = board.san(best_move.move)  # Store Stockfish's move **before pushing**
+            stockfish_move_uci = best_move.move.uci()
             board.push(worst_move)
         continue
 
     best_move = engine.play(board, chess.engine.Limit(depth=10,time=3))
     best_move_algebraic = board.san(best_move.move)
-    print(f"\n✅ Best move for you: {best_move_algebraic}\n")
+    stockfish_move = board.san(best_move.move)  # Store Stockfish's move **before pushing**
+    stockfish_move_uci = best_move.move.uci()
     board.push(best_move.move)
-
+    if board.is_checkmate():
+          print(f"💀 Checkmate: {best_move_algebraic}")
+    else:
+          print(f"\n✅ Best move for you: {best_move_algebraic}\n")
 
 
 print("\n🏁 Game Over!")
