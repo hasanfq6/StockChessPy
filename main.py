@@ -3,6 +3,7 @@ import argparse
 import chess
 import chess.engine
 import readline 
+from util import *
 
 engine_path = "/data/data/com.termux/files/usr/bin/stockfish"
 
@@ -22,6 +23,7 @@ modes_group.add_argument("-K", "--classical", action="store_true", help="Enable 
 modes_group.add_argument("-D", "--defensive", action="store_true", help="Enable defensive playstyle (Avoids blunders)")
 modes_group.add_argument("-G", "--gambit", action="store_true", help="Enable aggressive and risky plays (Sacrifices material)")
 modes_group.add_argument("-X", "--adaptive", action="store_true", help="Enable dynamic playstyle (Adjusts strategy during the game)")
+modes_group.add_argument("-N", "--newbie", action="store_true", help="Play like newbie")
 
 custom_group = parser.add_argument_group("Custom", "Fine-tune engine settings")
 custom_group.add_argument("-s", "--skill", type=int, default=20, help="Stockfish skill level (0-20)")
@@ -34,6 +36,7 @@ custom_group.add_argument("-z", "--syzygy-depth", type=int, default=10, help="Sy
 
 other_group = parser.add_argument_group("Others", "Others options")
 other_group.add_argument("-B", "--blunder",action="store_true", help="Make Blunder moves to avoid detection (default: false and 10 percentage")
+other_group.add_argument("-T", "--tatics",action="store_true", help="Display Tatics for each move")
 
 args = parser.parse_args()
 
@@ -47,6 +50,15 @@ if args.aggressive:
     args.move_overhead = 10
     args.nodestime = 10000
     slected_mode = "Aggressive"
+
+elif args.newbie:
+    args.skill = 8
+    args.elo = 1320
+    args.threads = 2                                       
+    args.hash = 700
+    args.move_overhead = 800
+    args.nodestime = 700
+    slected_mode = "Newbie"
 
 elif args.intermediate:
     args.skill = 15
@@ -275,9 +287,15 @@ while not board.is_game_over():
     stockfish_move_uci = best_move.move.uci()
     board.push(best_move.move)
     if board.is_checkmate():
-          print(f"💀 Checkmate: {best_move_algebraic}")
+          print(f"\n💀 Checkmate: {best_move_algebraic}\n")
     else:
           print(f"\n✅ Best move for you: {best_move_algebraic}\n")
+    # Detect and display all tactics
+    tactics = detect_tactics(board, board.turn)
+    if args.tatics:
+      for tactic, squares in tactics.items():
+        if squares:
+           print(f"⚔️ {tactic.replace('_', ' ').title()} detected at: {', '.join(squares)}")
 
 
 print("\n🏁 Game Over!")
