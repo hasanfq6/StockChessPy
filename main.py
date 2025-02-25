@@ -196,6 +196,17 @@ while not board.is_game_over():
     elif move.lower() == "board":
         print(board)
         continue
+    elif move.lower().startswith("save"):
+         parts = move.split(maxsplit=1)  # Splits into 'save' and 'filename'
+         if len(parts) == 2 and parts[1].strip():  # Check if filename is provided
+            filename = parts[1].strip()
+            save_game(board, filename)
+            continue
+         else:
+            print("❌️ Please provide a filename like this:\n> save filename")
+            continue
+    elif move.lower() == "load":
+        board = load_game()
     elif move.lower() == "oops":  # Fix accidental moves
         if stockfish_move is None:
             print("⚠️ No suggested move to verify yet.")
@@ -228,25 +239,7 @@ while not board.is_game_over():
 
     # Adaptive Mode Adjustments
     if args.adaptive:
-        analysis = engine.analyse(board, chess.engine.Limit(time=1), info=chess.engine.INFO_SCORE)
-        score = analysis["score"].relative.score(mate_score=10000)  # Score in centipawns
-
-        if score > 300:  # Winning
-            print("\n🟢 Adaptive Mode: Playing Aggressive (Winning)")
-            args.skill = 20
-            args.nodestime = 10000
-
-        elif score < -300:  # Losing
-            print("\n🔴 Adaptive Mode: Playing Defensive (Losing)")
-            args.skill = 15
-            args.nodestime = 8000
-
-        elif -100 < score < 100:  # Equal
-            print("\n🟡 Adaptive Mode: Playing Classical (Equal Position)")
-            args.skill = 18
-            args.nodestime = 10000
-
-        engine.configure({"Skill Level": args.skill, "nodestime": args.nodestime})
+        adjust_adaptive_mode(board, engine, args)
 
     analysis = engine.analyse(board, chess.engine.Limit(time=2), info=chess.engine.INFO_SCORE)
     mate_in = analysis["score"].relative.mate()

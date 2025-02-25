@@ -3,6 +3,7 @@ import argparse
 import chess
 import chess.engine
 import readline 
+from util import *
 
 engine_path = "/data/data/com.termux/files/usr/bin/stockfish"
 
@@ -22,6 +23,7 @@ modes_group.add_argument("-K", "--classical", action="store_true", help="Enable 
 modes_group.add_argument("-D", "--defensive", action="store_true", help="Enable defensive playstyle (Avoids blunders)")
 modes_group.add_argument("-G", "--gambit", action="store_true", help="Enable aggressive and risky plays (Sacrifices material)")
 modes_group.add_argument("-X", "--adaptive", action="store_true", help="Enable dynamic playstyle (Adjusts strategy during the game)")
+modes_group.add_argument("-N", "--newbie", action="store_true", help="Play like newbie")
 
 custom_group = parser.add_argument_group("Custom", "Fine-tune engine settings")
 custom_group.add_argument("-s", "--skill", type=int, default=20, help="Stockfish skill level (0-20)")
@@ -33,7 +35,8 @@ custom_group.add_argument("-n", "--nodestime", type=int, default=10000, help="Mi
 custom_group.add_argument("-z", "--syzygy-depth", type=int, default=10, help="Syzygy tablebase probe depth (Endgame table)")
 
 other_group = parser.add_argument_group("Others", "Others options")
-other_group.add_argument("-B", "--blunder", type=float,default=0.1, help="Make Blunder moves to avoid detection (default: false and 10 percentage(0.1 = 10,0.2 = 20))")
+other_group.add_argument("-B", "--blunder",action="store_true", help="Make Blunder moves to avoid detection (default: false and 10 percentage")
+other_group.add_argument("-T", "--tatics",action="store_true", help="Display Tatics for each move")
 
 args = parser.parse_args()
 
@@ -47,6 +50,15 @@ if args.aggressive:
     args.move_overhead = 10
     args.nodestime = 10000
     slected_mode = "Aggressive"
+
+elif args.newbie:
+    args.skill = 8
+    args.elo = 1320
+    args.threads = 2                                       
+    args.hash = 700
+    args.move_overhead = 800
+    args.nodestime = 700
+    slected_mode = "Newbie"
 
 elif args.intermediate:
     args.skill = 15
@@ -198,7 +210,7 @@ while not board.is_game_over():
         try:
             # Apply the move the user actually played
             board.push_san(user_actual_move)
-            print(f"✅ Board updated: Your move {user_actual_move} is now applied.")
+            print(f"\n✅ Board updated: Your move {user_actual_move} is now applied.\n")
         except ValueError:
             print("❌ Invalid move entered. Keeping Stockfish's move.")
             board.push_uci(stockfish_move_uci)  # Restore Stockfish's move if the user input is invalid
@@ -216,25 +228,7 @@ while not board.is_game_over():
 
     # Adaptive Mode Adjustments
     if args.adaptive:
-        analysis = engine.analyse(board, chess.engine.Limit(time=1), info=chess.engine.INFO_SCORE)
-        score = analysis["score"].relative.score(mate_score=10000)  # Score in centipawns
-
-        if score > 300:  # Winning
-            print("\n🟢 Adaptive Mode: Playing Aggressive (Winning)")
-            args.skill = 20
-            args.nodestime = 10000
-
-        elif score < -300:  # Losing
-            print("\n🔴 Adaptive Mode: Playing Defensive (Losing)")
-            args.skill = 15
-            args.nodestime = 8000
-
-        elif -100 < score < 100:  # Equal
-            print("\n🟡 Adaptive Mode: Playing Classical (Equal Position)")
-            args.skill = 18
-            args.nodestime = 10000
-
-        engine.configure({"Skill Level": args.skill, "nodestime": args.nodestime})
+        adjust_adaptive_mode(board, engine, args)
 
     analysis = engine.analyse(board, chess.engine.Limit(time=2), info=chess.engine.INFO_SCORE)
     mate_in = analysis["score"].relative.mate()
@@ -275,9 +269,15 @@ while not board.is_game_over():
     stockfish_move_uci = best_move.move.uci()
     board.push(best_move.move)
     if board.is_checkmate():
-          print(f"💀 Checkmate: {best_move_algebraic}")
+          print(f"\n💀 Checkmate: {best_move_algebraic}\n")
     else:
           print(f"\n✅ Best move for you: {best_move_algebraic}\n")
+    # Detect and display all tactics
+    tactics = detect_tactics(board, board.turn)
+    if args.tatics:
+      for tactic, squares in tactics.items():
+        if squares:
+           print(f"⚔️ {tactic.replace('_', ' ').title()} detected at: {', '.join(squares)}")
 
 
 print("\n🏁 Game Over!")

@@ -1,4 +1,5 @@
-import chess
+import chess,os
+import chess.pgn
 
 def detect_tactics(board, color):
     tactics = {
@@ -85,3 +86,126 @@ def detect_tactics(board, color):
                     tactics["underpromotion_trap"].append(chess.square_name(square))
 
     return tactics 
+
+def detect_game_phase(board):
+    """Detect the current phase of the game based on move count and remaining pieces."""
+    total_moves = board.fullmove_number
+    piece_count = len(board.piece_map())
+
+    if total_moves <= 10:
+        return "Opening"
+    elif piece_count <= 10:
+        return "Endgame"
+    else:
+        return "Middlegame"
+
+def is_position_complex(board, engine):
+    """Detect if the position is complex based on the evaluation spread of legal moves."""
+    evaluations = []
+    for move in board.legal_moves:
+        board.push(move)
+        analysis = engine.analyse(board, chess.engine.Limit(time=0.5), info=chess.engine.INFO_SCORE)
+        score = analysis["score"].relative.score(mate_score=10000)
+        if score is not None:
+            evaluations.append(score)
+        board.pop()
+
+    if not evaluations:
+        return False
+
+    eval_range = max(evaluations) - min(evaluations)
+    return eval_range > 150  # Complex if evaluation range is wide
+
+def adjust_adaptive_mode(board, engine, args):
+    """Enhanced adaptive logic that adjusts based on game phase, complexity, and evaluation."""
+    phase = detect_game_phase(board)
+    analysis = engine.analyse(board, chess.engine.Limit(time=1), info=chess.engine.INFO_SCORE)
+    score = analysis["score"].relative.score(mate_score=10000)  
+
+    complex_position = is_position_complex(board, engine)
+
+    # Adjust based on game phase
+    if phase == "Opening":
+        print("\n🟦 Opening Phase: Playing safe and developing pieces.")
+        args.skill = 15
+        args.nodestime = 5000
+
+    elif phase == "Middlegame":
+        if score > 300:
+            print("\n🟢 Middlegame: Playing aggressively (Winning)")
+            args.skill = 20
+            args.nodestime = 10000
+        elif score < -300:
+            print("\n🔴 Middlegame: Playing defensively (Losing)")
+            args.skill = 15
+            args.nodestime = 8000
+        else:
+            if complex_position:
+                print("\n🟡 Middlegame: Cautious play (Complex Position)")
+                args.skill = 16
+                args.nodestime = 8000
+            else:
+                print("\n🟡 Middlegame: Balanced strategy (Equal Position)")
+                args.skill = 18
+                args.nodestime = 10000
+
+    elif phase == "Endgame":
+        print("\n⚪ Endgame: Precision-focused strategy")
+        args.skill = 20
+        args.nodestime = 12000
+
+    # Apply updated settings to Stockfish
+    engine.configure({
+        "Skill Level": args.skill,
+        "nodestime": args.nodestime
+    })
+
+
+# Ensure games directory exists
+os.makedirs("games", exist_ok=True)
+
+def save_game(board, filename):
+    """Save the current game to a PGN file."""
+    game = chess.pgn.Game().from_board(board)
+    filepath = f"games/{filename}.pgn"
+    with open(filepath, "w") as file:
+        file.write(str(game))
+    print(f"💾 Game saved as '{filepath}'")
+
+
+def list_saved_games():
+    """List available saved games in the 'games' directory."""
+    files = [f for f in os.listdir("games") if f.endswith(".pgn")]
+    return files
+
+
+def load_game():
+    """Load a game from saved PGN files with user selection."""
+    games = list_saved_games()
+    if not games:
+        print("❌ No saved games found.")
+        return None
+
+    print("\n📂 Select a saved game to load:")
+    for i, game_file in enumerate(games, 1):
+        print(f"{i}. {game_file}")
+
+    while True:
+        try:
+            choice = int(input("Enter the number of the game to load: "))
+            if 1 <= choice <= len(games):
+                selected_game = games[choice - 1]
+                with open(f"games/{selected_game}", "r") as file:
+                    game = chess.pgn.read_game(file)
+                print(f"✅ Loaded game: {selected_game}")
+
+                # Apply all moves from the loaded PGN to set the board state correctly
+                board = game.board()
+                for move in game.mainline_moves():
+                    board.push(move)
+
+                return board
+            else:
+                print("⚠️ Invalid selection. Try again.")
+        except ValueError:
+            print("❌ Please enter a valid number.")

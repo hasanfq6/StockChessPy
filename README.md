@@ -36,6 +36,9 @@ StockChessPy is a simple chess assistant powered by [Stockfish](https://stockfis
   - ♟️ Accepts opponent moves in algebraic notation.
   - 📊 Provides real-time board evaluation and move suggestions.
   - ⚠️ Alerts when checkmate is imminent.
+  - 🔄 You can undo the move's using `oops` command
+  - 📁 Save the game using command `save`
+  - 🎮 Load the game usinh command `load` and continue from saved
 
 - **User-Friendly Experience:**
   - 🎨 Displays an attractive configuration summary.
