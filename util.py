@@ -1,5 +1,70 @@
-import chess,os
+import chess,os,random
 import chess.pgn
+import chess.engine
+import heapq  # For sorting moves by evaluation
+import time
+
+def save_game_pgn(board, opponent_color):
+    """
+    Save the completed chess game in PGN format with a Unix timestamp.
+
+    Args:
+        board (chess.Board): The chess board containing the game history.
+        opponent_color (str): 'w' if the opponent played as White, 'b' if Black.
+    """
+    # Create PGN game object
+    game = chess.pgn.Game()
+    game.headers["White"] = "Me" if opponent_color == 'b' else "Opponent"
+    game.headers["Black"] = "Opponent" if opponent_color == 'b' else "Me"
+    node = game
+
+    # Add all moves from the board to the PGN game
+    for move in board.move_stack:
+        node = node.add_variation(move)
+
+    # Ensure the games directory exists
+    if not os.path.exists("games"):
+        os.makedirs("games")
+
+    # Generate filename using Unix timestamp
+    unix_time = int(time.time())
+    file_name = f"games/game_{unix_time}.pgn"
+
+    # Save the game to the file
+    with open(file_name, "w") as pgn_file:
+        exporter = chess.pgn.FileExporter(pgn_file)
+        game.accept(exporter)
+
+    print(f"\n🏁 Game Over! Saved as '{file_name}'")
+
+def make_blunder(board, engine, blunder_chance=0.1):
+    """Force the engine to make a blunder with a probability."""
+    if random.random() > blunder_chance:
+        return None  # No blunder, return control to normal move
+
+    legal_moves = list(board.legal_moves)
+    move_evals = []
+
+    # Analyze all legal moves and store their evaluations
+    for move in legal_moves:
+        board.push(move)
+        analysis = engine.analyse(board, chess.engine.Limit(time=0.5), info=chess.engine.INFO_SCORE)
+        score = analysis["score"].relative.score(mate_score=10000) or 0
+        board.pop()
+        move_evals.append((score, move))
+
+    # Sort moves by evaluation (from best to worst)
+    worst_moves = heapq.nsmallest(3, move_evals, key=lambda x: x[0])  # Get the 3 worst moves
+
+    # Randomly pick from the worst 3 moves to add unpredictability
+    chosen_blunder = random.choice(worst_moves)
+    blunder_move = chosen_blunder[1]
+    blunder_eval = chosen_blunder[0]
+
+    # Display blunder details
+    blunder_move_algebraic = board.san(blunder_move)
+    print(f"\n🤡 Blundering move: {blunder_move_algebraic} (Eval: {blunder_eval} cp)\n")
+    return blunder_move
 
 def detect_tactics(board, color):
     tactics = {
@@ -209,3 +274,104 @@ def load_game():
                 print("⚠️ Invalid selection. Try again.")
         except ValueError:
             print("❌ Please enter a valid number.")
+
+
+def evaluate_position(engine, board):
+    """Evaluate the board position using Stockfish."""
+    info = engine.analyse(board, chess.engine.Limit(time=0.5))
+    score = info["score"].white()  # Always get evaluation from White's perspective
+    return score.score(mate_score=100000)  # If mate detected, return a very high score
+
+def remove_game_statistics(board, last_move, stats):
+    """
+    Removes the impact of the last move from the game statistics.
+    
+    Args:
+        board: The current board state.
+        last_move: The move object to remove.
+        stats: Dictionary tracking stats for White and Black.
+    """
+    # Determine color from the move based on who just played
+    color = "Black" if board.turn == chess.WHITE else "White"
+
+    # Check the last recorded result and decrement it
+    if stats[color]["blunders"] > 0:
+        stats[color]["blunders"] -= 1
+    elif stats[color]["mistakes"] > 0:
+        stats[color]["mistakes"] -= 1
+    elif stats[color]["inaccuracies"] > 0:
+        stats[color]["inaccuracies"] -= 1
+
+def update_game_statistics(engine, board, move, stats):
+    """
+    Detect and update inaccuracies, mistakes, and blunders.
+    
+    Args:
+        engine: Stockfish engine instance.
+        board: Current chess board state.
+        move: The move just played.
+        stats: Dictionary tracking stats for White and Black.
+    """
+    player = "White" if board.turn == chess.BLACK else "Black"  # Board turn is after making the move
+
+    # Evaluate position before the move
+    board.pop()  # Undo move temporarily
+    eval_before = evaluate_position(engine, board)
+    board.push(move)  # Redo the move
+
+    # Evaluate after the move
+    eval_after = evaluate_position(engine, board)
+
+    # Calculate the drop in centipawn score (negative drop indicates worsening position)
+    score_diff = eval_before - eval_after
+
+    # Detect type of error
+    if score_diff >= 300:
+        stats[player]['blunders'] += 1
+    elif score_diff >= 100:
+        stats[player]['mistakes'] += 1
+    elif score_diff >= 50:
+        stats[player]['inaccuracies'] += 1
+
+def initialize_game_stats():
+    """Initialize the stats for both players."""
+    return {
+        "White": {"blunders": 0, "mistakes": 0, "inaccuracies": 0},
+        "Black": {"blunders": 0, "mistakes": 0, "inaccuracies": 0}
+    }
+
+def game_statistics_summary(board, stats, total_moves):
+    """Display the game statistics for both players."""
+    result = ""
+    if board.is_checkmate():
+        winner = "White" if board.turn == chess.BLACK else "Black"
+        result = f"🏆 Result: {winner} wins by checkmate!"
+    elif board.is_stalemate():
+        result = "🤝 Result: Draw by stalemate!"
+    elif board.is_insufficient_material():
+        result = "🤝 Result: Draw due to insufficient material!"
+    elif board.is_seventyfive_moves():
+        result = "🤝 Result: Draw by seventy-five move rule!"
+    elif board.is_fivefold_repetition():
+        result = "🤝 Result: Draw by fivefold repetition!"
+    else:
+        result = "🏁 Game ended without a decisive result."
+
+    summary = f"""
+🏁 Game Summary:
+----------------------------
+🔢 Total Moves Played : {total_moves // 2}
+----------------------------
+🔍 White:
+❌ Blunders           : {stats['White']['blunders']}
+⚠️ Mistakes           : {stats['White']['mistakes']}
+❓ Inaccuracies       : {stats['White']['inaccuracies']}
+----------------------------
+🔍 Black:
+❌ Blunders           : {stats['Black']['blunders']}
+⚠️ Mistakes           : {stats['Black']['mistakes']}
+❓ Inaccuracies       : {stats['Black']['inaccuracies']}
+----------------------------
+{result}
+    """
+    return summary

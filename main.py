@@ -1,4 +1,5 @@
-import os,sys,random
+import os,sys
+import random
 import argparse
 import chess
 import chess.engine
@@ -35,7 +36,7 @@ custom_group.add_argument("-n", "--nodestime", type=int, default=10000, help="Mi
 custom_group.add_argument("-z", "--syzygy-depth", type=int, default=10, help="Syzygy tablebase probe depth (Endgame table)")
 
 other_group = parser.add_argument_group("Others", "Others options")
-other_group.add_argument("-B", "--blunder",action="store_true", help="Make Blunder moves to avoid detection (default: false and 10 percentage")
+other_group.add_argument("-B", "--blunder", type=float, default=0.1, help="Blunder chance percentage (0.0 - 1.0)")
 other_group.add_argument("-T", "--tatics",action="store_true", help="Display Tatics for each move")
 
 args = parser.parse_args()
@@ -52,7 +53,7 @@ if args.aggressive:
     slected_mode = "Aggressive"
 
 elif args.newbie:
-    args.skill = 8
+    args.skill = 4
     args.elo = 1320
     args.threads = 2                                       
     args.hash = 700
@@ -118,6 +119,7 @@ elif args.adaptive:
 board = chess.Board()
 engine = chess.engine.SimpleEngine.popen_uci(engine_path)
 
+
 # Configure Stockfish based on arguments
 engine.configure({
     "Skill Level": args.skill,
@@ -150,6 +152,9 @@ print(f"📚 Syzygy Depth    : {args.syzygy_depth}\n")
 if len(sys.argv) == 1:
      print("StockChessPy starts as Aggresive for costomize use `python main.py -h`\n")
 
+def print_board(board):
+    print(board.unicode(borders=True, invert_color=True))
+
 def get_legal_moves():
     """Get all legal moves in algebraic notation."""
     return [board.san(move) for move in board.legal_moves]
@@ -181,6 +186,8 @@ print("\nChess Assistant Started. Enter opponent's moves in algebraic notation (
 stockfish_move = None  # Store Stockfish’s last move
 stockfish_move_uci = None  # Store UCI format for easy undo
 
+game_stats = initialize_game_stats()
+move_history = []
 
 while not board.is_game_over():
 
@@ -188,13 +195,14 @@ while not board.is_game_over():
       move = input("Enter Opponent's Move: ")
 
     except KeyboardInterrupt:
-        print("\nGame aborted.")
+        print("\n🏳️‍ Game aborted.")
+        sys.exit(0)
         break
 
     if move.lower() == "quit":
         break
     elif move.lower() == "board":
-        print(board)
+        print_board(board)
         continue
     elif move.lower().startswith("save"):
          parts = move.split(maxsplit=1)  # Splits into 'save' and 'filename'
@@ -218,9 +226,15 @@ while not board.is_game_over():
         # Undo Stockfish’s move
         board.pop()
 
+        if move_history:
+           last_move = move_history.pop()  # Remove last move from history
+           remove_game_statistics(board, last_move, game_stats)  # Remove its stats
+
         try:
             # Apply the move the user actually played
             board.push_san(user_actual_move)
+            move_history.append(board.peek())
+            update_game_statistics(engine, board, board.peek(), game_stats)
             print(f"\n✅ Board updated: Your move {user_actual_move} is now applied.\n")
         except ValueError:
             print("❌ Invalid move entered. Keeping Stockfish's move.")
@@ -230,6 +244,9 @@ while not board.is_game_over():
 
     try:
         board.push_san(move)
+        move_history.append(board.peek())
+        update_game_statistics(engine, board, board.peek(), game_stats)
+
     except ValueError:
         print("❌ Invalid move, try again.")
         continue
@@ -247,38 +264,21 @@ while not board.is_game_over():
         print(f"\n⚠️ CHECKMATE IN {mate_in} MOVES! ⚠️")
 
     if args.blunder and mate_in is None and random.random() < args.blunder:
-
-        analysis = engine.analyse(board, chess.engine.Limit(time=1), info=chess.engine.INFO_SCORE)
-        best_move = engine.play(board, chess.engine.Limit(time=1)).move
-        best_eval = analysis["score"].relative.score(mate_score=10000)  
-
-    # Try all legal moves and pick the worst one
-        worst_move = None
-        worst_eval = best_eval  
-
-        for move in board.legal_moves:
-            board.push(move)
-            analysis = engine.analyse(board, chess.engine.Limit(time=0.5), info=chess.engine.INFO_SCORE)
-            move_eval = analysis["score"].relative.score(mate_score=10000)  
-            board.pop()  
-
-            if move_eval is not None and move_eval < worst_eval:  
-                worst_eval = move_eval
-                worst_move = move  
-
-        if worst_move:
-            worst_move_algebraic = board.san(worst_move)
-            print(f"\n🤡 Blundering move: {worst_move_algebraic} (-{abs(best_eval - worst_eval)} cp)\n")
-            stockfish_move = board.san(best_move.move)  # Store Stockfish's move **before pushing**
-            stockfish_move_uci = best_move.move.uci()
-            board.push(worst_move)
-        continue
+       blunder_move = make_blunder(board, engine, blunder_chance=0.1)  # 10% chance to blunder
+       if blunder_move:
+          stockfish_move = board.san(blunder_move)
+          stockfish_move_uci = blunder_move.uci()
+          board.push(blunder_move)
+          continue  # Skip the normal best move execution
 
     best_move = engine.play(board, chess.engine.Limit(depth=10,time=3))
     best_move_algebraic = board.san(best_move.move)
     stockfish_move = board.san(best_move.move)  # Store Stockfish's move **before pushing**
     stockfish_move_uci = best_move.move.uci()
     board.push(best_move.move)
+
+    move_history.append(board.peek())
+    update_game_statistics(engine, board, board.peek(), game_stats)
     if board.is_checkmate():
           print(f"\n💀 Checkmate: {best_move_algebraic}\n")
     else:
@@ -290,6 +290,12 @@ while not board.is_game_over():
         if squares:
            print(f"⚔️ {tactic.replace('_', ' ').title()} detected at: {', '.join(squares)}")
 
+total_moves = len(move_history)
+summary = game_statistics_summary(board, game_stats, total_moves)
+print(summary)
 
-print("\n🏁 Game Over!")
+save_game_pgn(board, opponent_color)
+
+# After the game ends
+#print("\n🏁 Game Over!")
 engine.quit()

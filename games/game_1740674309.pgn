@@ -1,0 +1,12 @@
+[Event "?"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "Me"]
+[Black "Opponent"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Na6 3. Bxa6 Nh6 4. Be2 a6 5. c3 b6 6. d4 c6 7. Bxh6 f5 8. Be3
+g6 9. exf5 h6 10. Nxe5 Rh7 11. fxg6 Rh8 12. Nd2 Be7 13. g7 Qc7 14. Bh5+ Kd8 15.
+gxh8=Q+ Bf8 16. Qxf8# *
+

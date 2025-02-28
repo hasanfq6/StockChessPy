@@ -42,77 +42,25 @@ args = parser.parse_args()
 
 slected_mode = None
 
-if args.aggressive:
-    args.skill = 20
-    args.elo = 3190
-    args.threads = 4
-    args.hash = 700
-    args.move_overhead = 10
-    args.nodestime = 10000
-    slected_mode = "Aggressive"
+modes = {
+    "aggressive": {"skill": 20, "elo": 3190, "threads": 4, "hash": 700, "move_overhead": 10, "nodestime": 10000},
+    "newbie": {"skill": 4, "elo": 1320, "threads": 2, "hash": 700, "move_overhead": 800, "nodestime": 700},
+    "intermediate": {"skill": 15, "elo": 2500, "threads": 2, "hash": 512, "move_overhead": 25, "nodestime": 8000},
+    "club": {"skill": 10, "elo": 1800, "threads": 2, "hash": 256, "move_overhead": 50, "nodestime": 5000},
+    "classical": {"skill": 20, "elo": 3190, "threads": 4, "hash": 700, "move_overhead": 50, "nodestime": 10000},
+    "defensive": {"skill": 15, "elo": 2400, "threads": 2, "hash": 512, "move_overhead": 40, "nodestime": 10000},
+    "gambit": {"skill": 17, "elo": 2700, "threads": 3, "hash": 256, "move_overhead": 15, "nodestime": 10000},
+    "adaptive": {"skill": 18, "elo": 2800, "threads": 3, "hash": 768, "move_overhead": 20, "nodestime": 10000},
+}
 
-elif args.newbie:
-    args.skill = 8
-    args.elo = 1320
-    args.threads = 2                                       
-    args.hash = 700
-    args.move_overhead = 800
-    args.nodestime = 700
-    slected_mode = "Newbie"
-
-elif args.intermediate:
-    args.skill = 15
-    args.elo = 2500
-    args.threads = 2
-    args.hash = 512
-    args.move_overhead = 25
-    args.nodestime = 8000
-    slected_mode = "Intermediate"
-
-elif args.club:
-    args.skill = 10
-    args.elo = 1800
-    args.threads = 2
-    args.hash = 256
-    args.move_overhead = 50
-    args.nodestime = 5000
-    slected_mode = "Club"
-
-elif args.classical:
-    args.skill = 20
-    args.elo = 3190
-    args.threads = 4
-    args.hash = 700
-    args.move_overhead = 50
-    args.nodestime = 10000
-    slected_mode = "Classical"
-
-elif args.defensive:
-    args.skill = 15
-    args.elo = 2400
-    args.threads = 2
-    args.hash = 512
-    args.move_overhead = 40
-    args.nodestime = 10000
-    slected_mode = "Defensive"
-
-elif args.gambit:
-    args.skill = 17
-    args.elo = 2700
-    args.threads = 3
-    args.hash = 256
-    args.move_overhead = 15
-    args.nodestime = 10000
-    slected_mode = "Gambit"
-
-elif args.adaptive:
-    args.skill = 18  # Start with a balanced level
-    args.elo = 2800
-    args.threads = 3
-    args.hash = 768
-    args.move_overhead = 20
-    args.nodestime = 10000
-    slected_mode = "Adaptive"
+for mode, settings in modes.items():
+    if getattr(args, mode, False):
+        for key, value in settings.items():
+            setattr(args, key, value)
+        selected_mode = mode.capitalize()
+        break
+else:
+    selected_mode = "Aggressive"  # Default mode
 
 # Initialize board and Stockfish engine
 board = chess.Board()
