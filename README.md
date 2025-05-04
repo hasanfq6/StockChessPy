@@ -3,7 +3,7 @@
 StockChessPy is a simple chess assistant powered by [Stockfish](https://stockfishchess.org/) that runs in **Termux**. It allows you to play against an opponent while suggesting optimal moves using Stockfish’s powerful analysis.
 
 ## 🔗 Repository
-[GitHub - Kamanati/StockChessPy](https://github.com/Kamanati/StockChessPy)
+[GitHub - hasanfq6/StockChessPy](https://github.com/hasanfq6/StockChessPy)
 
 ---
 # Features 
@@ -77,7 +77,7 @@ engine_path = "/data/data/com.termux/files/usr/bin/stockfish"
 ### 3️⃣ Clone this repository  
 
 ```sh
-git clone https://github.com/Kamanati/StockChessPy.git
+git clone https://github.com/hasanfq6/StockChessPy.git
 cd StockChessPy
 ```
 
@@ -155,7 +155,7 @@ This project is open-source under the **GNU License**.
 ---
 
 ## 📬 Contact
-For issues, suggestions, or contributions, visit [GitHub Issues](https://github.com/Kamanati/StockChessPy/issues).
+For issues, suggestions, or contributions, visit [GitHub Issues](https://github.com/hasanfq6/StockChessPy/issues).
 
 ---
 
